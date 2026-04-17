@@ -5,25 +5,26 @@ import (
 
 	"github.com/user/vaultlink/internal/audit"
 	"github.com/user/vaultlink/internal/config"
+	"github.com/user/vaultlink/internal/diff"
 	"github.com/user/vaultlink/internal/env"
 	"github.com/user/vaultlink/internal/filter"
 	"github.com/user/vaultlink/internal/snapshot"
 	"github.com/user/vaultlink/internal/vault"
 )
 
-// Syncer orchestrates reading from Vault and writing to .env.
+// Syncer orchestrates fetching, filtering, diffing, and writing secrets.
 type Syncer struct {
-	cfg      *config.Config
-	logger   *audit.Logger
-	snapshot *snapshot.Manager
+	cfg     *config.Config
+	logger  *audit.Logger
+	manager *snapshot.Manager
 }
 
-// New creates a Syncer from the given config and logger.
+// New creates a new Syncer instance.
 func New(cfg *config.Config, logger *audit.Logger) *Syncer {
 	return &Syncer{
-		cfg:      cfg,
-		logger:   logger,
-		snapshot: snapshot.NewManager(".vaultlink.snapshot.json"),
+		cfg:     cfg,
+		logger:  logger,
+		manager: snapshot.NewManager(cfg.OutputFile + ".snapshot"),
 	}
 }
 
@@ -42,32 +43,25 @@ func (s *Syncer) Run() error {
 	f := filter.NewFilter(s.cfg.Role)
 	filtered := f.Apply(secrets)
 
-	changed, err := s.snapshot.HasChanged(filtered)
-	if err != nil {
-		return fmt.Errorf("snapshot check: %w", err)
-	}
-	if !changed {
-		s.logger.Log("no changes detected, skipping write")
+	previous, _ := s.manager.Load()
+	changes := diff.Compare(previous, filtered)
+	s.logger.Log(fmt.Sprintf("sync complete: %s", diff.Summary(changes)))
+
+	if len(changes) == 0 {
 		return nil
 	}
 
-	w := env.NewWriter(s.cfg.OutputFile, s.cfg.Overwrite)
-	if err := w.Write(filtered); err != nil {
+	writer, err := env.NewWriter(s.cfg.OutputFile, s.cfg.Overwrite)
+	if err != nil {
+		return fmt.Errorf("env writer: %w", err)
+	}
+	if err := writer.Write(filtered); err != nil {
 		return fmt.Errorf("write env: %w", err)
 	}
 
-	keys := make([]string, 0, len(filtered))
-	for k := range filtered {
-		keys = append(keys, k)
-	}
-	if err := s.snapshot.Save(&snapshot.Snapshot{
-		SecretPath: s.cfg.SecretPath,
-		Keys:       keys,
-		Checksum:   filtered,
-	}); err != nil {
+	if err := s.manager.Save(filtered); err != nil {
 		return fmt.Errorf("save snapshot: %w", err)
 	}
 
-	s.logger.Log(fmt.Sprintf("synced %d keys to %s", len(filtered), s.cfg.OutputFile))
 	return nil
 }
