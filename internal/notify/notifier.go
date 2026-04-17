@@ -4,59 +4,54 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
-	"github.com/vaultlink/internal/diff"
+	"github.com/user/vaultlink/internal/diff"
+	"github.com/user/vaultlink/internal/redact"
 )
 
-// Level controls verbosity of notifications.
+// Level controls how much detail is printed.
 type Level string
 
 const (
-	LevelSilent  Level = "silent"
-	LevelSummary Level = "summary"
-	LevelVerbose Level = "verbose"
+	Silent  Level = "silent"
+	Summary Level = "summary"
+	Verbose Level = "verbose"
 )
 
-// Notifier writes sync change notifications to an output.
+// Notifier prints sync results to an output writer.
 type Notifier struct {
-	out   io.Writer
-	level Level
+	level  Level
+	output io.Writer
+	rule   redact.Rule
 }
 
-// New creates a Notifier writing to out at the given level.
-// If out is nil, os.Stdout is used.
-func New(out io.Writer, level Level) *Notifier {
-	if out == nil {
-		out = os.Stdout
+// New creates a Notifier with the given level. Defaults to os.Stdout.
+func New(level Level, output io.Writer) *Notifier {
+	if output == nil {
+		output = os.Stdout
 	}
-	if level == "" {
-		level = LevelSummary
-	}
-	return &Notifier{out: out, level: level}
+	return &Notifier{level: level, output: output, rule: redact.DefaultRule()}
 }
 
-// Notify prints change information based on the configured level.
+// Notify prints the diff result according to the configured level.
 func (n *Notifier) Notify(result diff.Result) {
-	if n.level == LevelSilent {
+	switch n.level {
+	case Silent:
 		return
-	}
-
-	summary := diff.Summary(result)
-	if n.level == LevelSummary {
-		fmt.Fprintln(n.out, summary)
-		return
-	}
-
-	// Verbose: print summary then per-key details.
-	fmt.Fprintln(n.out, summary)
-	if len(result.Added) > 0 {
-		fmt.Fprintf(n.out, "  added:   %s\n", strings.Join(result.Added, ", "))
-	}
-	if len(result.Removed) > 0 {
-		fmt.Fprintf(n.out, "  removed: %s\n", strings.Join(result.Removed, ", "))
-	}
-	if len(result.Updated) > 0 {
-		fmt.Fprintf(n.out, "  updated: %s\n", strings.Join(result.Updated, ", "))
+	case Summary:
+		fmt.Fprintln(n.output, diff.Summary(result))
+	case Verbose:
+		fmt.Fprintln(n.output, diff.Summary(result))
+		for _, k := range result.Added {
+			fmt.Fprintf(n.output, "  [+] %s\n", k)
+		}
+		for _, k := range result.Removed {
+			fmt.Fprintf(n.output, "  [-] %s\n", k)
+		}
+		for _, k := range result.Updated {
+			fmt.Fprintf(n.output, "  [~] %s\n", k)
+		}
+	default:
+		fmt.Fprintln(n.output, diff.Summary(result))
 	}
 }
