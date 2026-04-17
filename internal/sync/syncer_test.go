@@ -19,15 +19,10 @@ func mockVaultServer(t *testing.T, payload string) *httptest.Server {
 	}))
 }
 
-func TestRun_Success(t *testing.T) {
-	server := mockVaultServer(t, `{"data":{"data":{"APP_KEY":"abc","DB_PASS":"secret"}}}`)
-	defer server.Close()
-
-	tmpDir := t.TempDir()
-	outFile := filepath.Join(tmpDir, ".env")
-
-	cfg := &config.Config{
-		VaultAddress: server.URL,
+func newTestConfig(t *testing.T, vaultURL, outFile string) *config.Config {
+	t.Helper()
+	return &config.Config{
+		VaultAddress: vaultURL,
 		VaultToken:   "test-token",
 		SecretPath:   "secret/data/app",
 		OutputFile:   outFile,
@@ -35,6 +30,16 @@ func TestRun_Success(t *testing.T) {
 		RolePrefixes: []string{},
 		Overwrite:    true,
 	}
+}
+
+func TestRun_Success(t *testing.T) {
+	server := mockVaultServer(t, `{"data":{"data":{"APP_KEY":"abc","DB_PASS":"secret"}}}`)
+	defer server.Close()
+
+	tmpDir := t.TempDir()
+	outFile := filepath.Join(tmpDir, ".env")
+
+	cfg := newTestConfig(t, server.URL, outFile)
 
 	syncer, err := New(cfg)
 	if err != nil {
