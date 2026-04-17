@@ -16,7 +16,7 @@ var testSecrets = map[string]string{
 
 func TestApply_KnownRole(t *testing.T) {
 	f := filter.NewFilter([]filter.Role{
-		{Name: "backend", Prefixes: []string_", "APP_"}},
+		{Name: "backend", Prefixes: []string{"DB_", "APP_"}},
 	})
 
 	result := f.Apply("backend", testSecrets)
@@ -56,5 +56,15 @@ func TestHasRole(t *testing.T) {
 	}
 	if f.HasRole("dev") {
 		t.Error("expected HasRole to return false for 'dev'")
+	}
+}
+
+func TestApply_NilSecrets(t *testing.T) {
+	f := filter.NewFilter([]filter.Role{
+		{Name: "backend", Prefixes: []string{"DB_"}},
+	})
+	result := f.Apply("backend", nil)
+	if len(result) != 0 {
+		t.Errorf("expected empty map for nil secrets, got %d keys", len(result))
 	}
 }
