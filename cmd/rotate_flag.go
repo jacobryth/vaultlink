@@ -13,7 +13,11 @@ func registerRotateFlags(cmd *cobra.Command) {
 }
 
 // resolvedRotateLog returns the rotate-log flag value from the command.
+// If the flag is not set or an error occurs, it returns the default value.
 func resolvedRotateLog(cmd *cobra.Command) string {
-	v, _ := cmd.Flags().GetString("rotate-log")
+	v, err := cmd.Flags().GetString("rotate-log")
+	if err != nil {
+		return defaultRotateLog
+	}
 	return v
 }
