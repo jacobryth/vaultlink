@@ -8,10 +8,10 @@ import (
 
 // Snapshot represents a point-in-time record of synced secrets metadata.
 type Snapshot struct {
-	Timestamp time.Time         `json:"timestamp"`
-	SecretPath string           `json:"secret_path"`
-	Keys      []string          `json:"keys"`
-	Checksum  map[string]string `json:"checksum"`
+	Timestamp  time.Time         `json:"timestamp"`
+	SecretPath string            `json:"secret_path"`
+	Keys       []string          `json:"keys"`
+	Checksum   map[string]string `json:"checksum"`
 }
 
 // Manager handles reading and writing snapshots to disk.
@@ -35,6 +35,7 @@ func (m *Manager) Save(s *Snapshot) error {
 }
 
 // Load reads and parses the snapshot from disk.
+// Returns nil, nil if no snapshot file exists yet.
 func (m *Manager) Load() (*Snapshot, error) {
 	data, err := os.ReadFile(m.filePath)
 	if err != nil {
@@ -65,4 +66,14 @@ func (m *Manager) HasChanged(current map[string]string) (bool, error) {
 		}
 	}
 	return len(current) != len(prev.Checksum), nil
+}
+
+// Delete removes the snapshot file from disk.
+// Returns nil if the file does not exist.
+func (m *Manager) Delete() error {
+	err := os.Remove(m.filePath)
+	if err != nil && os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
