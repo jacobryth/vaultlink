@@ -18,6 +18,8 @@ func NewChain(steps ...FilterFunc) *Chain {
 
 // Apply runs the secrets map through each step in order.
 // If secrets is nil, an empty map is returned immediately.
+// Each step receives the output of the previous step, so filters are cumulative.
+// Processing stops early if the result becomes empty.
 func (c *Chain) Apply(secrets map[string]string) map[string]string {
 	if secrets == nil {
 		return map[string]string{}
@@ -33,6 +35,15 @@ func (c *Chain) Apply(secrets map[string]string) map[string]string {
 		}
 	}
 	return result
+}
+
+// Append returns a new Chain with the provided FilterFuncs added after the
+// existing steps. The original Chain is not modified.
+func (c *Chain) Append(steps ...FilterFunc) *Chain {
+	newSteps := make([]FilterFunc, len(c.steps)+len(steps))
+	copy(newSteps, c.steps)
+	copy(newSteps[len(c.steps):], steps)
+	return &Chain{steps: newSteps}
 }
 
 // Len returns the number of steps in the chain.
