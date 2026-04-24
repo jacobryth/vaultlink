@@ -6,9 +6,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestValidateFlag_Default(t *testing.T) {
+// newTestCmd creates a cobra.Command with the validate-rules flag registered,
+// for use in unit tests.
+func newTestCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "test"}
 	registerValidateFlag(cmd)
+	return cmd
+}
+
+func TestValidateFlag_Default(t *testing.T) {
+	newTestCmd()
 
 	val := resolvedValidateRulesFile()
 	if val != "" {
@@ -17,8 +24,7 @@ func TestValidateFlag_Default(t *testing.T) {
 }
 
 func TestValidateFlag_SetValue(t *testing.T) {
-	cmd := &cobra.Command{Use: "test"}
-	registerValidateFlag(cmd)
+	cmd := newTestCmd()
 
 	if err := cmd.Flags().Set("validate-rules", "/etc/rules.yaml"); err != nil {
 		t.Fatalf("failed to set flag: %v", err)
@@ -31,8 +37,7 @@ func TestValidateFlag_SetValue(t *testing.T) {
 }
 
 func TestValidateFlag_OverwriteValue(t *testing.T) {
-	cmd := &cobra.Command{Use: "test"}
-	registerValidateFlag(cmd)
+	cmd := newTestCmd()
 
 	if err := cmd.Flags().Set("validate-rules", "/first/rules.yaml"); err != nil {
 		t.Fatalf("failed to set initial flag value: %v", err)
