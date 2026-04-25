@@ -48,6 +48,11 @@ func New(level Level, b64Key string) (*Cipher, error) {
 	return &Cipher{level: level, key: key}, nil
 }
 
+// Level returns the configured encryption level.
+func (c *Cipher) Level() Level {
+	return c.level
+}
+
 // Apply transforms secret values according to the configured level.
 func (c *Cipher) Apply(secrets map[string]string) (map[string]string, error) {
 	if secrets == nil {
@@ -72,12 +77,16 @@ func (c *Cipher) Apply(secrets map[string]string) (map[string]string, error) {
 	return out, nil
 }
 
-func (c *Cipher) encrypt(plaintext string) (string, error) {
+func (c *Cipher) newGCM() (cipher.AEAD, error) {
 	block, err := aes.NewCipher(c.key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	gcm, err := cipher.NewGCM(block)
+	return cipher.NewGCM(block)
+}
+
+func (c *Cipher) encrypt(plaintext string) (string, error) {
+	gcm, err := c.newGCM()
 	if err != nil {
 		return "", err
 	}
@@ -94,11 +103,7 @@ func (c *Cipher) decrypt(ciphertext string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("base64 decode: %w", err)
 	}
-	block, err := aes.NewCipher(c.key)
-	if err != nil {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := c.newGCM()
 	if err != nil {
 		return "", err
 	}
