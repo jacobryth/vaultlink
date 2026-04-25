@@ -42,6 +42,12 @@ func New(level Level, env, custom string) (*Prefixer, error) {
 	}
 }
 
+// Prefix returns the prefix string that will be applied to keys.
+// Returns an empty string when the level is LevelNone.
+func (p *Prefixer) Prefix() string {
+	return p.prefix
+}
+
 // Apply returns a new map with prefixed keys.
 func (p *Prefixer) Apply(secrets map[string]string) map[string]string {
 	if secrets == nil {
