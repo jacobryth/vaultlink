@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,4 +29,21 @@ func resolvedValidateRulesFile() string {
 // hasValidateRulesFile reports whether a validation rules file has been specified.
 func hasValidateRulesFile() bool {
 	return validateRulesFile != ""
+}
+
+// validateRulesFileExists checks that the validation rules file specified via
+// --validate-rules exists and is a regular file. It returns an error if no file
+// was specified or if the path cannot be stat'd.
+func validateRulesFileExists() error {
+	if validateRulesFile == "" {
+		return fmt.Errorf("no validation rules file specified; use --validate-rules to provide one")
+	}
+	info, err := os.Stat(validateRulesFile)
+	if err != nil {
+		return fmt.Errorf("validation rules file %q not found: %w", validateRulesFile, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("validation rules file %q is a directory, not a file", validateRulesFile)
+	}
+	return nil
 }
