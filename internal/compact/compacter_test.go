@@ -79,3 +79,13 @@ func TestApply_PreservesOriginal(t *testing.T) {
 		t.Error("Apply must not mutate the original map")
 	}
 }
+
+func TestApply_EmptyMap(t *testing.T) {
+	for _, lvl := range []Level{LevelNone, LevelBlank, LevelAll} {
+		c, _ := New(lvl)
+		got := c.Apply(map[string]string{})
+		if len(got) != 0 {
+			t.Errorf("level %q: expected empty map, got %d entries", lvl, len(got))
+		}
+	}
+}
